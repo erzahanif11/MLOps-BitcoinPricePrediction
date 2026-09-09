@@ -2,10 +2,7 @@
 
 An MLOps project for forecasting Bitcoin (BTC) prices across multiple time horizons, built with a continuous training pipeline that adapts to data drift and performance degradation in the highly dynamic cryptocurrency market.
 
-**Course:** Machine Learning Operations (MLOps)  
-**Instructor:** Rizal Setya Perdana, S.Kom., M.Kom., Ph.D.  
-**Author:** Erza Hanif Pramudita Hanggara (245150200111038)  
-**Institution:** Faculty of Computer Science, Universitas Brawijaya, 2026
+**Author:** Erza Hanif Pramudita Hanggara  
 
 ---
 

@@ -97,8 +97,7 @@ The preprocessing stage:
 - Removes duplicate timestamps.
 - Removes the currently incomplete hourly record.
 - Combines the processed data with the existing - historical dataset.
-- Saves the resulting dataset to:
-- data/processed/bitcoin.csv
+- Saves the resulting dataset to: ```data/processed/bitcoin.csv```
 
 Run preprocessing manually with:
 

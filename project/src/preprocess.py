@@ -47,8 +47,8 @@ def transform_data(raw_data):
     return df
 
 def preproccess_data(df):
-    df = df.sort_values(by="timestamp").reset_index(drop=True)
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True).dt.tz_convert("Asia/Jakarta")
+    df = df.sort_values(by="timestamp").reset_index(drop=True)
     df = df.drop_duplicates(subset="timestamp", keep="last")
     df = df[(df["timestamp"].dt.minute == 0) & (df["timestamp"].dt.second == 0)]
     return df

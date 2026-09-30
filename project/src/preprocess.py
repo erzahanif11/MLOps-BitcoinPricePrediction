@@ -3,8 +3,9 @@ from pathlib import Path
 
 import pandas as pd
 
-RAW_DIR = Path("../data/raw")
-PROCESSED_DIR = Path("../data/processed")
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = PROJECT_DIR / "data" / "raw"
+PROCESSED_DIR = PROJECT_DIR / "data" / "processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 OUTPUT_FILE = PROCESSED_DIR / "bitcoin_data.csv"

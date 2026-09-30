@@ -6,7 +6,8 @@ import requests
 
 API_URL = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
 
-RAW_DIR = Path("../data/raw")
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+RAW_DIR = PROJECT_DIR / "data" / "raw"
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 def fetch_bitcoin_data():

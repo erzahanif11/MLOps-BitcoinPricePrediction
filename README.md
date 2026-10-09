@@ -103,37 +103,49 @@ Run preprocessing manually with:
 
 ```python src/preprocess.py```
 
-The current hourly record is excluded because the hour is still in progress and therefore does not yet represent a complete observation. The record will be ingested again after the hour has finished. For example, if ingestion occurs at 14:14, the latest available data point is 14:14. Since this is not aligned to the full hour (00 minutes), it is removed.
+The current latest record is excluded because it is still in progress and therefore does not yet represent a complete observation. For example, if ingestion occurs at 14:14, the latest available data point is 14:14. Since this is not aligned to the full hour (00 minutes), it is removed, leaving only the data point at 14.00.
 
-## Project Structure
+## Data Versioning with DVC
+DVC (Data Version Control) is used to track dataset versions independently of Git's regular file tracking. This allows changes to the dataset to be recorded without committing the full dataset contents directly to Git.
+
+DVC metadata is stored in .dvc files, which reference the corresponding data objects. These metadata files can be committed to Git so that dataset versions can be associated with specific repository revisions
+
+### Track Dataset Changes
+After modifying the processed dataset, check its DVC status:
+
+`dvc status`
+
+To compare the current data state with a previous version:
+
+`dvc diff`
+
+These commands help identify whether tracked data has changed and which dataset changes are associated with a version transition.
+
+### Store and Retrieve Versioned Data
+
+After configuring the DVC remote, upload tracked data to remote storage:
+
+`dvc push`
+
+Retrieve the tracked data from remote storage:
+
+`dvc pull`
+
+## Remote Storage with MinIO
+MinIO is used as the S3-compatible object storage for DVC which is stored in local environment.
+
+Instead of storing the actual dataset objects in the Git repository, DVC uploads them to the configured MinIO bucket. Git retains the corresponding DVC metadaat, allowing the dattaset to be retrieved when needed.
+
+The data versioning workflow is:
 ```
-project
-├── .devcontainer/ 
-│   ├── devcontainer.json 
-│   └── Dockerfile 
-│
-├── .github/ 
-│   └── workflows/
-│   └── bitcoin_pipeline.yml 
-│
-├── data
-│   ├── raw/      
-│   └── processed/
-│         └── bitcoin_data.csv
-│  
-├── models/
-├── src/
-│   ├── ingest_data.py 
-│   ├── preprocess.py 
-│   └── run_pipeline.py
-│
-├── notebooks/  
-├── tests/  
-├── docs/  
-├── configs/
-├── requirements.txt               
-└── README.md
+  Processed Dataset --> DVC Tracking (DVC metadata on git) --> DVC Push --> MinIO Object Storage
 ```
+
+The remote configuration must specify the MinIO endpoint and bucket. Access credentials should be configured locally or through environment variables and must not be committed to the repository.
+
+To inspect the configured remotes:
+
+`dvc remote list`
 
 ## Running with Codespace
 1. Open this repository on GitHub.  
@@ -150,6 +162,139 @@ project
     To run only preprocessing:
     ```python src/preprocess.py```
 
+## DVC and MinIO Setup
+
+This section describes how to configure DVC with MinIO as an S3-compatible remote storage backend. A tunnel is used to expose the MinIO endpoint when it is not directly accessible from the development environment.
+
+### 1. Install DVC with S3 Support
+
+Install DVC with its S3 storage dependencies:
+
+```bash
+pip install "dvc[s3]"
+```
+
+Verify the installation:
+
+```bash
+dvc --version
+```
+
+### 2. Prepare MinIO Object Storage
+
+Ensure that a MinIO instance is running and accessible. Create a bucket to store DVC-managed data objects.
+
+Record the following configuration details:
+
+- MinIO endpoint URL
+- Bucket name
+- Access key
+- Secret key
+
+The endpoint must be reachable from the environment running DVC. Do not commit access credentials or other secrets to the Git repository.
+
+### 3. Expose MinIO Through a Tunnel
+
+If MinIO is not directly accessible from the development environment, establish a tunnel to expose its S3 API endpoint.
+
+Configure the tunnel to forward traffic to the MinIO API port on the machine or environment where MinIO is running. Use the resulting reachable endpoint as the DVC remote endpoint.
+
+The tunnel must remain active whenever DVC needs to communicate with MinIO. Use the actual endpoint and tunnel command from your environment; do not assume that a locally accessible MinIO address is also accessible from GitHub Codespaces.
+
+### 4. Configure the DVC Remote
+
+Configure a named DVC remote using the MinIO endpoint and bucket:
+
+```bash
+dvc remote add -d minio_remote s3://<bucket-name>/<path>
+dvc remote modify minio_remote endpointurl <endpoint-url>
+```
+
+Replace the placeholders with the actual bucket, optional object prefix, and reachable endpoint.
+
+Configure the access credentials using environment variables or another supported secure credential mechanism. Avoid placing secrets directly in tracked configuration files.
+
+Verify the remote configuration:
+
+```bash
+dvc remote list
+```
+
+### 5. Track the Dataset
+
+Track the processed dataset with DVC:
+
+```bash
+dvc add data/processed/bitcoin_data.csv
+dvc add data/raw/
+```
+
+This creates DVC metadata for the dataset and updates `.gitignore` so that the data file is not tracked directly by Git.
+
+Commit the DVC metadata and relevant repository changes:
+
+```bash
+git add data/processed/bitcoin_data.csv.dvc .gitignore
+git commit -m "Track processed dataset with DVC"
+```
+
+### 6. Upload Data to MinIO
+
+Upload the tracked dataset to the configured remote:
+
+```bash
+dvc push
+```
+
+Check the remote synchronization status:
+
+```bash
+dvc status -c
+```
+
+### 7. Verify Dataset Versioning
+
+Modify or regenerate the dataset, then check its status:
+
+```bash
+dvc status
+```
+
+After updating the DVC-tracked dataset, inspect the changes:
+
+```bash
+dvc add data/processed/bitcoin_data.csv
+dvc diff
+```
+
+Commit the updated DVC metadata and upload the new data version:
+
+```bash
+git add data/processed/bitcoin_data.csv.dvc .gitignore
+git commit -m "Update processed dataset version"
+dvc push
+```
+
+The updated metadata records the new dataset version, while Git history allows the previous metadata to be recovered.
+
+### 8. Restore a Previous Dataset Version
+
+Check out the Git revision containing the desired DVC metadata:
+
+```bash
+git checkout <commit-hash>
+dvc pull
+```
+
+This restores the dataset corresponding to that revision, provided the required data objects remain available in MinIO and the remote is accessible.
+
+### Notes
+
+- Git tracks the source code and DVC metadata; MinIO stores the remote data objects.
+- DVC does not automatically upload every dataset modification. The relevant tracking and `dvc push` commands must be executed.
+- Remote operations require valid credentials and an active connection to the MinIO endpoint.
+- A tunnel endpoint may change between sessions, depending on the tunneling service and its configuration.
+
 ## Automated Periodic Pipeline
 The data pipeline is automated using GitHub Actions.
 
@@ -161,4 +306,35 @@ The workflow can be triggered manually through GitHub Actions using workflow_dis
 
 This allows the data ingestion and preprocessing process to be executed periodically without manually running the scripts.
 
-**Limitation** : As currently there are no DVC yet, the scheduler won't automically save the process and immediately remove it from memory, therefore to save the file, wrokflow need to continuously commit and push and this was not practical for a github repository.
+## Project Structure
+```
+worspace/
+ ├──.dvc
+ │   └── config
+ └── project
+    ├── .devcontainer/ 
+    │   ├── devcontainer.json 
+    │   └── Dockerfile 
+    │
+    ├── .github/ 
+    │   └── workflows/
+    │   └── bitcoin_pipeline.yml 
+    │
+    ├── data (managed through dvc)
+    │   ├── raw/      
+    │   └── processed/
+    │         └── bitcoin_data.csv
+    │  
+    ├── models/
+    ├── src/
+    │   ├── ingest_data.py 
+    │   ├── preprocess.py 
+    │   └── run_pipeline.py
+    │
+    ├── notebooks/  
+    ├── tests/  
+    ├── docs/  
+    ├── configs/
+    ├── requirements.txt               
+    └── README.md
+```

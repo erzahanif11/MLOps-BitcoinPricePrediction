@@ -131,6 +131,23 @@ Retrieve the tracked data from remote storage:
 
 `dvc pull`
 
+### Why Data Versioning Matters
+
+Data versioning is essential for ensuring the reproducibility of machine learning experiments. In time-series forecasting, newly ingested Bitcoin market data can change the training dataset and consequently affect model performance.
+
+Without dataset versioning, it may be difficult to reproduce previous experiments or determine whether a change in model performance was caused by changes in the model, its configuration, or the training data.
+
+DVC tracks dataset versions through metadata files, while Git records the corresponding metadata and code history. MinIO stores the actual versioned data objects remotely.
+
+This separation enables the project to:
+
+- **Reproduce experiments:** Retrieve the dataset associated with a specific Git revision.
+- **Track data changes:** Identify when the training dataset changes between experiments.
+- **Maintain data integrity:** Preserve previous data versions instead of relying solely on the latest processed CSV.
+- **Support model comparison:** Evaluate different model versions using identifiable dataset versions and consistent experimental configurations.
+
+For reproducible results, the dataset version, code revision, preprocessing configuration, and model parameters should be recorded together for each experiment.
+
 ## Remote Storage with MinIO
 
 MinIO is used as the S3-compatible object storage backend for DVC and is hosted in the local environment.

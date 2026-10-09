@@ -132,20 +132,51 @@ Retrieve the tracked data from remote storage:
 `dvc pull`
 
 ## Remote Storage with MinIO
-MinIO is used as the S3-compatible object storage for DVC which is stored in local environment.
 
-Instead of storing the actual dataset objects in the Git repository, DVC uploads them to the configured MinIO bucket. Git retains the corresponding DVC metadaat, allowing the dattaset to be retrieved when needed.
+MinIO is used as the S3-compatible object storage backend for DVC and is hosted in the local environment.
+
+Instead of storing the actual dataset objects directly in the Git repository, DVC uploads them to the configured MinIO bucket. Git tracks the corresponding DVC metadata, allowing specific dataset versions to be identified and retrieved when needed.
 
 The data versioning workflow is:
+
+```text
+Processed Dataset
+       |
+       v
+  DVC Tracking
+       |
+       +----> DVC Metadata (Git)
+       |
+       v
+    DVC Push
+       |
+       v
+MinIO Object Storage
 ```
-  Processed Dataset --> DVC Tracking (DVC metadata on git) --> DVC Push --> MinIO Object Storage
+
+The remote configuration specifies the MinIO endpoint and bucket. Access credentials must be configured locally or through environment variables and must not be committed to the repository.
+
+To inspect the configured DVC remotes, run:
+
+```bash
+dvc remote list
 ```
 
-The remote configuration must specify the MinIO endpoint and bucket. Access credentials should be configured locally or through environment variables and must not be committed to the repository.
+### Cloudflare Tunnel Configuration
 
-To inspect the configured remotes:
+This project uses a **Cloudflare Quick Tunnel** to expose the locally hosted MinIO S3 API endpoint to the development environment.
 
-`dvc remote list`
+Because a Quick Tunnel generates a temporary URL, the endpoint may change whenever the tunnel is restarted. When this happens, update the DVC remote endpoint configuration to use the newly generated URL before performing remote operations such as `dvc push` or `dvc pull`.
+
+Update the endpoint using:
+
+```bash
+dvc remote modify minio_remote endpointurl https://<new-tunnel-url>
+```
+
+Replace `minio_remote` with the configured DVC remote name and `<new-tunnel-url>` with the current tunnel URL.
+
+After updating the endpoint, verify the remote configuration and ensure that the tunnel is running before synchronizing data with MinIO.
 
 ## Running with Codespace
 1. Open this repository on GitHub.  

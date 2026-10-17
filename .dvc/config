@@ -2,4 +2,4 @@
     remote = minio
 ['remote "minio"']
     url = s3://mlops-bitcoin/dvc
-    endpointurl = https://php-yourself-sheep-result.trycloudflare.com
+    endpointurl = https://techniques-genealogy-discusses-cbs.trycloudflare.com  

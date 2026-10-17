@@ -4,7 +4,8 @@ import pandas as pd
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 PROCESSED_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_data.csv"
-OUTPUT_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_features.csv"
+TRAIN_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_train.csv"
+INFERENCE_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_inference.csv"
 
 HORIZONS = [1, 3, 6, 12, 24]
 
@@ -116,25 +117,29 @@ def build_features(df):
 
     before = len(result)
 
+    result_undropped = result.copy()
+
     result = result.dropna(subset=required_features)
 
     result = result.sort_values(["timestamp", "horizon"]).reset_index(drop=True)
+    result_undropped = result_undropped.sort_values(["timestamp", "horizon"]).reset_index(drop=True)
 
     print(f"Rows before dropping NaNs: {before}, after: {len(result)}")
 
-    return result
+    return result, result_undropped
 
 def main():
     df = load_data()
     if df.empty:
         return ValueError("Loaded data is empty. Please check the processed data file.")
     
-    feature_df = build_features(df)
+    feature_df, feature_df_undropped = build_features(df)
     if feature_df.empty:
         return ValueError("Feature DataFrame is empty after processing. Please check the feature engineering steps.")
 
-    feature_df.to_csv(OUTPUT_FILE, index=False)
-    print(f"Feature engineering completed. Features saved to: {OUTPUT_FILE}")
+    feature_df.to_csv(TRAIN_FILE, index=False)
+    feature_df_undropped.to_csv(INFERENCE_FILE, index=False)
+    print(f"Feature engineering completed. Features saved to: {TRAIN_FILE} and {INFERENCE_FILE}")
     print(feature_df.info())
 
 if __name__ == "__main__":

@@ -1,2 +1,4 @@
 /bitcoin_data.csv
 /bitcoin_features.csv
+/bitcoin_train.csv
+/bitcoin_inference.csv

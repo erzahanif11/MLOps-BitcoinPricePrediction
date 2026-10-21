@@ -2,4 +2,4 @@
     remote = minio
 ['remote "minio"']
     url = s3://mlops-bitcoin/dvc
-    endpointurl = https://techniques-genealogy-discusses-cbs.trycloudflare.com  
+    endpointurl = https://jelsoft-achieved-toe-version.trycloudflare.com  

@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, mean_absolute_percentage_error
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-TRAIN_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_train.csv"
+TRAIN_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_train_v1.csv"
 
 HORIZONS = [1, 3, 6, 12, 24]
 
@@ -214,30 +214,30 @@ def main():
     print(f"Split timestamp: {cutoff}")
 
     experiments = [
-        {
-            "name": "rf_baseline",
-            "params": {
-                "n_estimators": 100,
-                "max_depth": 10,
-                "min_samples_leaf": 2,
-            },
-        },
+        # {
+        #     "name": "rf_baseline",
+        #     "params": {
+        #         "n_estimators": 100,
+        #         "max_depth": 10,
+        #         "min_samples_leaf": 2,
+        #     },
+        # },
         {
             "name": "rf_deeper",
             "params": {
                 "n_estimators": 200,
-                "max_depth": 20,
+                "max_depth": 15,
                 "min_samples_leaf": 2,
             },
         },
-        {
-            "name": "rf_regularized",
-            "params": {
-                "n_estimators": 100,
-                "max_depth": 8,
-                "min_samples_leaf": 5,
-            },
-        },
+        # {
+        #     "name": "rf_regularized",
+        #     "params": {
+        #         "n_estimators": 100,
+        #         "max_depth": 8,
+        #         "min_samples_leaf": 5,
+        #     },
+        # },
     ]
 
     results = []

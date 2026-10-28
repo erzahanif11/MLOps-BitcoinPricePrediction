@@ -60,16 +60,26 @@ data/raw/
 ## Data Pipeline
 The current data pipeline follows this flow:
 ```
-CoinGecko API --> Data Ingestion --> Raw JSON --> Data Preprocessing --> Processed CSV
+CoinGecko API --> Data Ingestion --> Raw JSON --> Data Preprocessing
+    --> Processed CSV --> Feature Engineering --> Training Dataset
 ```
 
-The complete pipeline can be executed using:
+The pipeline performs three stages:
+1. **Data ingestion** using `src/ingest_data.py`
+2. **Data preprocessing** using `src/preprocess.py`
+3. **Feature engineering** using `src/feature_engineering.py`
 
-```python src/run_pipeline.py```
+From the repository root, run the complete data pipeline with:
 
-The pipeline performs two main stages:
-1. **Data ingestion** using ```python src/ingest_data.py```
-2. **Data preprocessing** using ```python src/preprocess.py```
+```bash
+python project/src/run_pipeline.py
+```
+
+When working from inside the `project/` directory, the equivalent command is:
+
+```bash
+python src/run_pipeline.py
+```
 
 ## Data Ingestion
 
@@ -97,13 +107,116 @@ The preprocessing stage:
 - Removes duplicate timestamps.
 - Removes the currently incomplete hourly record.
 - Combines the processed data with the existing - historical dataset.
-- Saves the resulting dataset to: ```data/processed/bitcoin.csv```
+- Saves the resulting dataset to: `data/processed/bitcoin_data.csv`
 
 Run preprocessing manually with:
 
-```python src/preprocess.py```
+```bash
+python project/src/preprocess.py
+```
 
 The current latest record is excluded because it is still in progress and therefore does not yet represent a complete observation. For example, if ingestion occurs at 14:14, the latest available data point is 14:14. Since this is not aligned to the full hour (00 minutes), it is removed, leaving only the data point at 14.00.
+
+## Feature Engineering
+
+Feature engineering reads `data/processed/bitcoin_data.csv` and creates the
+training and inference datasets:
+
+- `data/processed/bitcoin_train.csv` contains only complete rows suitable for
+  supervised training.
+- `data/processed/bitcoin_inference.csv` preserves rows before the final
+  training-only NaN removal and can be used for future inference.
+
+For each timestamp, the pipeline creates one row for each forecast horizon:
+**1, 3, 6, 12, and 24 hours**. The generated features are:
+
+- Current `price`, `market_cap`, and `total_volume`.
+- Price lags at 1, 3, and 6 hours.
+- One-hour price return.
+- Six-hour rolling volatility.
+- `horizon`, which allows one model to predict all five horizons.
+- `target_price`, the price at the selected future horizon.
+
+Run feature engineering independently with:
+
+```bash
+python project/src/feature_engineering.py
+```
+
+The feature engineering step validates that the source data has positive
+prices, complete hourly timestamps, and enough observations to calculate the
+24-hour targets.
+
+## Model Training
+
+The training script uses `data/processed/bitcoin_train.csv` and performs a
+chronological 80/20 train-test split. A chronological split is used to avoid
+leaking future market information into the training set.
+
+Three `RandomForestRegressor` configurations are evaluated:
+
+| Experiment | Estimators | Maximum depth | Minimum samples per leaf |
+|---|---:|---:|---:|
+| `rf_baseline` | 100 | 10 | 2 |
+| `rf_deeper` | 200 | 20 | 2 |
+| `rf_regularized` | 100 | 8 | 5 |
+
+Each experiment is evaluated separately for the 1h, 3h, 6h, 12h, and 24h
+horizons using:
+
+- **MAE** (Mean Absolute Error)
+- **RMSE** (Root Mean Squared Error)
+- **MAPE** (Mean Absolute Percentage Error)
+
+The mean RMSE across available horizons is printed for each experiment. The
+model with the lowest mean RMSE can be selected for deployment.
+
+Run training from the repository root:
+
+```bash
+python project/src/train.py
+```
+
+## Experiment Tracking with MLflow
+
+Training logs parameters, dataset split information, per-horizon metrics,
+mean metrics, and the fitted model to MLflow. The experiment name is:
+
+```text
+bitcoin-multihorizon-forecasting
+```
+
+The registered model names correspond to the training experiments:
+`rf_baseline`, `rf_deeper`, and `rf_regularized`. Models are stored using the
+MLflow scikit-learn flavor with `skops` serialization.
+
+### Start the MLflow Tracking Server
+
+From the repository root, start a local MLflow server using SQLite for
+metadata and `mlartifacts/` for model artifacts:
+
+```bash
+mlflow server \
+  --host 0.0.0.0 \
+  --port 5000 \
+  --backend-store-uri sqlite:///mlflow.db \
+  --default-artifact-root ./mlartifacts
+```
+
+Open the MLflow UI at <http://localhost:5000>. In a Codespace, use the
+forwarded port URL provided by VS Code.
+
+In another terminal, point the training script to the tracking server and run
+the experiments:
+
+```bash
+export MLFLOW_TRACKING_URI=http://localhost:5000
+python project/src/train.py
+```
+
+`MLFLOW_TRACKING_URI` defaults to `http://localhost:5000` when it is not set.
+The local `mlflow.db` database and `mlartifacts/` directory are runtime
+outputs; they should not be committed to Git.
 
 ## Data Versioning with DVC
 DVC (Data Version Control) is used to track dataset versions independently of Git's regular file tracking. This allows changes to the dataset to be recorded without committing the full dataset contents directly to Git.
@@ -202,13 +315,29 @@ After updating the endpoint, verify the remote configuration and ensure that the
 4. The required Python dependencies are installed automatically.
 5. Run the complete data pipeline:
 
-    ```python src/run_pipeline.py```
+    ```bash
+    python src/run_pipeline.py
+    ```
 
     To run only data ingestion:
-    ```python src/ingest_data.py```
+    ```bash
+    python src/ingest_data.py
+    ```
 
     To run only preprocessing:
-    ```python src/preprocess.py```
+    ```bash
+    python src/preprocess.py
+    ```
+
+    To run only feature engineering:
+    ```bash
+    python src/feature_engineering.py
+    ```
+
+    To train and log the experiments to MLflow:
+    ```bash
+    python src/train.py
+    ```
 
 ## DVC and MinIO Setup
 
@@ -350,39 +479,42 @@ The workflow configuration is located at:
 
 ```.github/workflows/bitcoin_pipeline.yml```
 
-The workflow can be triggered manually through GitHub Actions using workflow_dispatch and is also configured to run periodically using a scheduled cron trigger, which is every hour.
+The workflow can be triggered manually through GitHub Actions using
+`workflow_dispatch` and is also configured to run periodically using a
+scheduled cron trigger, which is every hour. Each run executes ingestion,
+preprocessing, and feature engineering.
 
 This allows the data ingestion and preprocessing process to be executed periodically without manually running the scripts.
 
 ## Project Structure
 ```
-worspace/
+workspace/
  ├──.dvc
  │   └── config
+ ├── mlflow.db                 # local MLflow metadata (not committed)
+ ├── mlartifacts/              # local MLflow artifacts (not committed)
  └── project
-    ├── .devcontainer/ 
+    ├── .devcontainer/
     │   ├── devcontainer.json 
     │   └── Dockerfile 
-    │
-    ├── .github/ 
+    ├── .github/
     │   └── workflows/
-    │   └── bitcoin_pipeline.yml 
-    │
-    ├── data (managed through dvc)
-    │   ├── raw/      
+    │       └── bitcoin_pipeline.yml
+    ├── data/ (managed through DVC)
+    │   ├── raw/
     │   └── processed/
-    │         └── bitcoin_data.csv
-    │  
-    ├── models/
+    │       ├── bitcoin_data.csv
+    │       ├── bitcoin_train.csv
+    │       └── bitcoin_inference.csv
     ├── src/
-    │   ├── ingest_data.py 
-    │   ├── preprocess.py 
-    │   └── run_pipeline.py
-    │
-    ├── notebooks/  
-    ├── tests/  
-    ├── docs/  
+    │   ├── ingest_data.py
+    │   ├── preprocess.py
+    │   ├── feature_engineering.py
+    │   ├── run_pipeline.py
+    │   └── train.py
+    ├── notebooks/
+    ├── tests/
+    ├── docs/
     ├── configs/
-    ├── requirements.txt               
-    └── README.md
+    └── requirements.txt
 ```

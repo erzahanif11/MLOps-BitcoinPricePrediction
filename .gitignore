@@ -3,6 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# MLflow
+mlartifacts/
+mlflow.db
+
 # C extensions
 *.so
 

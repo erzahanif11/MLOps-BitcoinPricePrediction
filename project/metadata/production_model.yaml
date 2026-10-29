@@ -9,7 +9,7 @@ model:
 tracking:
   platform: MLflow
   tracking_uri: "http://localhost:5000"
-  run_id: "ISI_RUN_ID_MODEL_V11"
+  run_id: "d7512a8ab9d849fa84e5a605be3bf0f2"
 
 dataset:
   version_file: "project/data/processed/bitcoin_train_v1.csv.dvc"

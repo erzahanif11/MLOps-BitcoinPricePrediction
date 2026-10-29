@@ -1,0 +1,19 @@
+
+model:
+  name: rf_deeper
+  version: "11"
+  stage: Production
+  registry_uri: "models:/rf_deeper/11"
+  inference_uri: "models:/rf_deeper/Production"
+
+tracking:
+  platform: MLflow
+  tracking_uri: "http://localhost:5000"
+  run_id: "ISI_RUN_ID_MODEL_V11"
+
+dataset:
+  version_file: "project/data/processed/bitcoin_train_v1.csv.dvc"
+  role: "baseline training dataset"
+
+purpose:
+  description: "Model terpilih untuk layanan inferensi prediksi harga Bitcoin"

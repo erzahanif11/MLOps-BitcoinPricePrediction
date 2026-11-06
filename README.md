@@ -218,6 +218,74 @@ python project/src/train.py
 The local `mlflow.db` database and `mlartifacts/` directory are runtime
 outputs; they should not be committed to Git.
 
+## Inference API with FastAPI
+
+The inference service is implemented in `inference/app.py`. At startup, the
+service reads the Production model URI from
+`project/metadata/production_model.yaml` and loads the registered model from
+MLflow. The service uses the latest timestamp in
+`project/data/processed/bitcoin_inference.csv` and returns predictions for all
+configured horizons (1h, 3h, 6h, 12h, and 24h).
+
+The API exposes the following endpoints:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Checks service status and whether the model has loaded |
+| `POST` | `/predict` | Predicts prices for the latest available timestamp |
+
+### Run the API Locally
+
+Make sure the MLflow tracking server is running first. From the repository
+root, install the inference dependencies and start the service:
+
+```bash
+pip install -r inference/requirements.txt
+export MLFLOW_TRACKING_URI=http://localhost:5000
+uvicorn inference.app:app --host 0.0.0.0 --port 8000
+```
+
+Check the service health:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Request predictions:
+
+```bash
+curl -X POST http://localhost:8000/predict
+```
+
+Interactive API documentation is available at
+<http://localhost:8000/docs>.
+
+## Build and Run the Docker Image
+
+The root `Dockerfile` packages the FastAPI inference service, its dependencies,
+the production model metadata, and the inference dataset into a Python 3.11
+image. Build the image from the repository root:
+
+```bash
+docker build -t bitcoin-inference:latest .
+```
+
+The container expects the MLflow tracking server to be available on port 5000.
+When MLflow runs on the Docker host, start the container with
+`host.docker.internal` mapped to the host gateway:
+
+```bash
+docker run --rm \
+  --add-host=host.docker.internal:host-gateway \
+  -p 8000:8000 \
+  -e MLFLOW_TRACKING_URI=http://host.docker.internal:5000 \
+  bitcoin-inference:latest
+```
+
+Then call the API through <http://localhost:8000/health> or
+<http://localhost:8000/docs> to access swagger ui and run the api test for /predict endpoint. The image exposes port `8000` and starts
+Uvicorn with `inference.app:app`.
+
 ## Data Versioning with DVC
 DVC (Data Version Control) is used to track dataset versions independently of Git's regular file tracking. This allows changes to the dataset to be recorded without committing the full dataset contents directly to Git.
 
@@ -491,6 +559,10 @@ This allows the data ingestion and preprocessing process to be executed periodic
 workspace/
  ├──.dvc
  │   └── config
+ ├── Dockerfile               # Docker image for the inference API
+ ├── inference/
+ │   ├── app.py               # FastAPI application
+ │   └── requirements.txt     # Inference dependencies
  ├── mlflow.db                 # local MLflow metadata (not committed)
  ├── mlartifacts/              # local MLflow artifacts (not committed)
  └── project

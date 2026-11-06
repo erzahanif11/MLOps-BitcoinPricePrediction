@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  repository_dispatch:
+    types: [retrain]
   workflow_dispatch:
 
 jobs:
@@ -29,3 +31,31 @@ jobs:
       - name: Run tests
         run: |
           pytest project/tests
+
+  train: 
+    if: github
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r project/requirements.txt
+        
+      - name: Pull data from DVC
+        working-directory: project
+        run: |
+          dvc pull
+
+      - name: Train Model
+        working-directory: project
+        run: |
+          python src/train.py

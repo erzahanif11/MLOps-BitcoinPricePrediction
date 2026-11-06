@@ -25,3 +25,9 @@ jobs:
       - name: Run Bitcoin Data Pipeline
         run: |
           python project/src/run_pipeline.py
+
+      - name: Push changes to DVC
+        working-directory: project
+        run: |
+          dvc commit
+          dvc push

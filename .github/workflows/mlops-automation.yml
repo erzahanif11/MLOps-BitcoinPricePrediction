@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest project/tests
+          python -m pytest -q project/tests
 
   train: 
     if: github.event.client.payload == 'retrain'

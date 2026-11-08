@@ -2,4 +2,6 @@ requests
 pandas
 dvc
 mlflow
+numpy
+scikit-learn
 pytest

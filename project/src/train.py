@@ -185,7 +185,7 @@ def run_experiment(experiment_name, params, train_df, test_df, cutoff):
         mlflow.sklearn.log_model(
             sk_model=model,
             name="model",
-            registered_model_name=experiment_name,
+            # registered_model_name=experiment_name,
             skops_trusted_types=[
                 "sklearn.tree._tree.Tree"
             ],

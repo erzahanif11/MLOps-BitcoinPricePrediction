@@ -1,15 +1,12 @@
 
 model:
   name: rf_deeper
-  version: "11"
   stage: Production
-  registry_uri: "models:/rf_deeper/11"
   inference_uri: "models:/rf_deeper/Production"
 
 tracking:
   platform: MLflow
   tracking_uri: "http://localhost:5000"
-  run_id: "d7512a8ab9d849fa84e5a605be3bf0f2"
 
 dataset:
   version_file: "project/data/processed/bitcoin_train_v1.csv.dvc"

@@ -1,0 +1,5 @@
+outs:
+- md5: 493962d017c1b91b6ea40c01ed21bc5e
+  size: 1250568
+  hash: md5
+  path: bitcoin_train.csv

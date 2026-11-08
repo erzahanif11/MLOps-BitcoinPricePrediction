@@ -1,0 +1,8 @@
+.git
+.dvc
+__pycache__
+*.pyc
+mlartifacts
+mlflow.db
+project/data/raw
+project/data/processed/*.dvc

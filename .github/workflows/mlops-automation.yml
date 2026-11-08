@@ -1,0 +1,90 @@
+name: MLOps Automation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  repository_dispatch:
+    types: [retrain]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r project/requirements.txt
+
+      - name: Run tests
+        run: |
+          python -m pytest -q project/tests
+
+  train: 
+    if: github.event.client.payload == 'retrain'
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      MLFLOW_TRACKING_URI: http://localhost:5000
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r project/requirements.txt
+        
+      - name: Pull data from DVC
+        working-directory: project
+        run: |
+          dvc pull
+
+      - name: Start MLflow Tracking Server
+        run: |
+          mlflow server \
+            --host localhost \
+            --port 5000 \
+            --backend-store-uri sqlite:///mlflow.db \
+            --default-artifact-root ./mlruns > mlflow.log 2>&1 &
+            
+          sleep 10
+          curl --fail http://localhost:5000/health
+
+      - name: Train Model
+        working-directory: project
+        run: |
+          python src/train.py
+
+      - name: Evaluate and promote to staging
+        working-directory: project
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5000
+        run: |
+          python src/evaluate_and_promote.py
+
+      - name: Promote model to production
+        working-directory: project
+        env:
+          MLFLOW_TRACKING_URI: http://localhost:5000
+        run: |
+          python src/promote_to_production.py
+    
+        

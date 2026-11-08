@@ -1,0 +1,5 @@
+outs:
+- md5: c5b6d68be01ea86aa89309f9b52e76a6
+  size: 91574
+  hash: md5
+  path: bitcoin_data.csv

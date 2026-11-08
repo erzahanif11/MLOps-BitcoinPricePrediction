@@ -1,0 +1,5 @@
+mlflow
+pandas
+fastapi
+uvicorn[standard]
+PyYAML

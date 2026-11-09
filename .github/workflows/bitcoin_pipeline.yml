@@ -29,5 +29,5 @@ jobs:
       - name: Push changes to DVC
         working-directory: project
         run: |
-          dvc commit
+          dvc commit --force
           dvc push

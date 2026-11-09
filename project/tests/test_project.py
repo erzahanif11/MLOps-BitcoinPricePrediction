@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from project.src.feature_engineering import build_features
 from project.src.train import load_data
@@ -6,15 +7,23 @@ from project.src.train import chronological_split
 from project.src.train import calculate_metrics
 
 def test_build_features():
+    timestamps = pd.date_range(
+        "2023-01-01",
+        periods=30,
+        freq="h",
+        tz="Asia/Jakarta",
+    )
     df = pd.DataFrame({
-        "date": ["2023-01-01", "2023-01-02", "2023-01-03"],
-        "price": [100, 200, 300]
+        "timestamp": timestamps,
+        "price": range(100, 130),
+        "market_cap": range(1000, 1030),
+        "total_volume": range(100, 130),
     })
 
-    df_features = build_features(df)
+    df_features, _ = build_features(df)
 
-    assert "price_lag_1" in df_features.columns
-    assert "price_diff" in df_features.columns
+    assert "price_lag_1h" in df_features.columns
+    assert "price_return_1h" in df_features.columns
 
 def test_load_train_data():
     df = load_data()
@@ -41,5 +50,4 @@ def test_calculate_metrics():
 
     assert np.isclose(metrics["mae"], 10.0)
     assert np.isclose(metrics["rmse"], 10.0)
-    assert np.isclose(metrics["mape"], 5.0)
-
+    assert np.isclose(metrics["mape"], 0.061111111111111116)

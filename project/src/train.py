@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, mean_absolute_percentage_error
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-TRAIN_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_train_v1.csv"
+TRAIN_FILE = PROJECT_DIR / "data" / "processed" / "bitcoin_train.csv"
 
 HORIZONS = [1, 3, 6, 12, 24]
 
@@ -267,4 +267,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -1,6 +1,7 @@
 requests
 pandas
 dvc
+dvc-s3
 mlflow
 numpy
 scikit-learn

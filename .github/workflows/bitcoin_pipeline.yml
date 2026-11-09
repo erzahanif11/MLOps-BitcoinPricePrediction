@@ -33,11 +33,7 @@ jobs:
           export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-$MINIO_ACCESS_KEY}"
           export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-$MINIO_SECRET_KEY}"
 
-          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-            echo "Skipping dvc pull: S3 credentials are not configured."
-          else
-            dvc pull
-          fi
+          dvc pull
 
       - name: Run Bitcoin Data Pipeline
         run: |
@@ -49,9 +45,5 @@ jobs:
           export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-$MINIO_ACCESS_KEY}"
           export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-$MINIO_SECRET_KEY}"
 
-          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-            echo "Skipping dvc push: S3 credentials are not configured."
-          else
-            dvc commit --force
-            dvc push
-          fi
+          dvc commit --force
+          dvc push

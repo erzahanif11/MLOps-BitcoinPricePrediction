@@ -1,5 +1,5 @@
 outs:
-- md5: 962d5129040addd62c258e7281ca7384
-  size: 1742576
+- md5: 61bd51d2dfe33bef27fe78a8d9580a1d
+  size: 1744935
   hash: md5
   path: bitcoin_inference.csv

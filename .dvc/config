@@ -2,4 +2,4 @@
     remote = minio
 ['remote "minio"']
     url = s3://mlops-bitcoin/dvc
-    endpointurl = https://stereo-pdf-res-observed.trycloudflare.com   
+    https://signed-dietary-bay-against.trycloudflare.com  

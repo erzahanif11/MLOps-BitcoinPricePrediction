@@ -85,9 +85,11 @@ python src/run_pipeline.py
 
 It uses the CoinGecko API to retrieve Bitcoin market data and stores the response as a timestamped JSON file in: ```data/raw/```
 
-Run the ingestion script manually with:
+Run the ingestion script manually from the repository root with:
 
-```python src/ingest_data.py```
+```bash
+python project/src/ingest_data.py
+```
 
 Example output:
 ```
@@ -153,15 +155,14 @@ The training script uses `data/processed/bitcoin_train.csv` and performs a
 chronological 80/20 train-test split. A chronological split is used to avoid
 leaking future market information into the training set.
 
-Three `RandomForestRegressor` configurations are evaluated:
+The current training configuration evaluates the `rf_deeper`
+`RandomForestRegressor` experiment:
 
 | Experiment | Estimators | Maximum depth | Minimum samples per leaf |
 |---|---:|---:|---:|
-| `rf_baseline` | 100 | 10 | 2 |
-| `rf_deeper` | 200 | 20 | 2 |
-| `rf_regularized` | 100 | 8 | 5 |
+| `rf_deeper` | 200 | 15 | 2 |
 
-Each experiment is evaluated separately for the 1h, 3h, 6h, 12h, and 24h
+The experiment is evaluated separately for the 1h, 3h, 6h, 12h, and 24h
 horizons using:
 
 - **MAE** (Mean Absolute Error)
@@ -306,6 +307,7 @@ These commands help identify whether tracked data has changed and which dataset 
 
 After configuring the DVC remote, upload tracked data to remote storage:
 
+`dvc commit --force`
 `dvc push`
 
 Retrieve the tracked data from remote storage:
@@ -352,7 +354,10 @@ Processed Dataset
 MinIO Object Storage
 ```
 
-The remote configuration specifies the MinIO endpoint and bucket. Access credentials must be configured locally or through environment variables and must not be committed to the repository.
+The repository is currently configured with a DVC remote named `minio`,
+using the `mlops-bitcoin/dvc` bucket path. Access credentials must be
+configured locally or through environment variables and must not be committed
+to the repository.
 
 To inspect the configured DVC remotes, run:
 
@@ -369,10 +374,12 @@ Because a Quick Tunnel generates a temporary URL, the endpoint may change whenev
 Update the endpoint using:
 
 ```bash
-dvc remote modify minio_remote endpointurl https://<new-tunnel-url>
+dvc remote modify minio endpointurl https://<new-tunnel-url>
 ```
 
-Replace `minio_remote` with the configured DVC remote name and `<new-tunnel-url>` with the current tunnel URL.
+Replace `<new-tunnel-url>` with the current tunnel URL. The endpoint stored in
+`.dvc/config` is a temporary Cloudflare Quick Tunnel URL and may need to be
+updated when the tunnel restarts.
 
 After updating the endpoint, verify the remote configuration and ensure that the tunnel is running before synchronizing data with MinIO.
 
@@ -389,22 +396,22 @@ After updating the endpoint, verify the remote configuration and ensure that the
 
     To run only data ingestion:
     ```bash
-    python src/ingest_data.py
+    python project/src/ingest_data.py
     ```
 
     To run only preprocessing:
     ```bash
-    python src/preprocess.py
+    python project/src/preprocess.py
     ```
 
     To run only feature engineering:
     ```bash
-    python src/feature_engineering.py
+    python project/src/feature_engineering.py
     ```
 
     To train and log the experiments to MLflow:
     ```bash
-    python src/train.py
+    python project/src/train.py
     ```
 
 ## DVC and MinIO Setup
@@ -448,11 +455,11 @@ The tunnel must remain active whenever DVC needs to communicate with MinIO. Use 
 
 ### 4. Configure the DVC Remote
 
-Configure a named DVC remote using the MinIO endpoint and bucket:
+Configure the `minio` DVC remote using the MinIO endpoint and bucket:
 
 ```bash
-dvc remote add -d minio_remote s3://<bucket-name>/<path>
-dvc remote modify minio_remote endpointurl <endpoint-url>
+dvc remote add -d minio s3://<bucket-name>/<path>
+dvc remote modify minio endpointurl <endpoint-url>
 ```
 
 Replace the placeholders with the actual bucket, optional object prefix, and reachable endpoint.
@@ -467,9 +474,10 @@ dvc remote list
 
 ### 5. Track the Dataset
 
-Track the processed dataset with DVC:
+From the `project/` directory, track the datasets with DVC:
 
 ```bash
+cd project
 dvc add data/processed/bitcoin_data.csv
 dvc add data/raw/
 ```
@@ -488,6 +496,7 @@ git commit -m "Track processed dataset with DVC"
 Upload the tracked dataset to the configured remote:
 
 ```bash
+dvc commit --force
 dvc push
 ```
 
@@ -517,6 +526,7 @@ Commit the updated DVC metadata and upload the new data version:
 ```bash
 git add data/processed/bitcoin_data.csv.dvc .gitignore
 git commit -m "Update processed dataset version"
+dvc commit --force
 dvc push
 ```
 
@@ -540,38 +550,43 @@ This restores the dataset corresponding to that revision, provided the required 
 - Remote operations require valid credentials and an active connection to the MinIO endpoint.
 - A tunnel endpoint may change between sessions, depending on the tunneling service and its configuration.
 
-## Automated Periodic Pipeline
-The data pipeline is automated using GitHub Actions.
+## Automated Pipelines with GitHub Actions
 
-The workflow configuration is located at:
+The repository has two GitHub Actions workflows:
 
-```.github/workflows/bitcoin_pipeline.yml```
+- `.github/workflows/bitcoin_pipeline.yml` runs hourly or manually through
+  `workflow_dispatch`. It pulls the DVC data, runs ingestion, preprocessing,
+  and feature engineering, then commits updated DVC pointers and pushes the
+  data to the configured remote. It uses `AWS_*` credentials first and falls
+  back to `MINIO_*` credentials.
+- `.github/workflows/mlops-automation.yml` runs tests on pushes and pull
+  requests to `main`. A `repository_dispatch` event with type `retrain` also
+  trains the model, evaluates it against the current Production model, and
+  promotes the challenger when appropriate.
 
-The workflow can be triggered manually through GitHub Actions using
-`workflow_dispatch` and is also configured to run periodically using a
-scheduled cron trigger, which is every hour. Each run executes ingestion,
-preprocessing, and feature engineering.
-
-This allows the data ingestion and preprocessing process to be executed periodically without manually running the scripts.
+For DVC synchronization, configure the repository secrets
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, or the fallback
+`MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`.
 
 ## Project Structure
 ```
 workspace/
- ├──.dvc
+ ├── .dvc/
  │   └── config
+ ├── .devcontainer/
+ │   ├── devcontainer.json
+ │   └── Dockerfile
+ ├── .github/
+ │   └── workflows/
+ │       ├── bitcoin_pipeline.yml
+ │       └── mlops-automation.yml
  ├── Dockerfile               # Docker image for the inference API
  ├── inference/
  │   ├── app.py               # FastAPI application
  │   └── requirements.txt     # Inference dependencies
  ├── mlflow.db                 # local MLflow metadata (not committed)
  ├── mlartifacts/              # local MLflow artifacts (not committed)
- └── project
-    ├── .devcontainer/
-    │   ├── devcontainer.json 
-    │   └── Dockerfile 
-    ├── .github/
-    │   └── workflows/
-    │       └── bitcoin_pipeline.yml
+ └── project/
     ├── data/ (managed through DVC)
     │   ├── raw/
     │   └── processed/
@@ -583,6 +598,8 @@ workspace/
     │   ├── preprocess.py
     │   ├── feature_engineering.py
     │   ├── run_pipeline.py
+    │   ├── evaluate_and_promote.py
+    │   ├── promote_to_production.py
     │   └── train.py
     ├── notebooks/
     ├── tests/

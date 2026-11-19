@@ -261,14 +261,47 @@ curl -X POST http://localhost:8000/predict
 Interactive API documentation is available at
 <http://localhost:8000/docs>.
 
+## Run MLflow and the Inference API with Docker Compose
+
+The repository includes `docker-compose.yaml` to run the MLflow tracking
+server and the FastAPI inference service together. The services share the
+`bitcoin-network` Docker network, so the API reaches MLflow at
+`http://mlflow:5000`. MLflow metadata and artifacts are persisted locally in
+`mlflow.db` and `mlartifacts/`.
+
+From the repository root, start both services with:
+
+```bash
+docker compose up -d
+```
+
+The services are available at:
+
+- MLflow UI: <http://localhost:5000>
+- API health check: <http://localhost:8000/health>
+- Interactive API documentation: <http://localhost:8000/docs>
+
+Request predictions with:
+
+```bash
+curl -X POST http://localhost:8000/predict
+```
+
+Stop the services with `Ctrl+C`, or run the following command from another
+terminal:
+
+```bash
+docker compose down
+```
+
 ## Build and Run the Docker Image
 
-The root `Dockerfile` packages the FastAPI inference service, its dependencies,
+The `inference/Dockerfile` packages the FastAPI inference service, its dependencies,
 the production model metadata, and the inference dataset into a Python 3.11
 image. Build the image from the repository root:
 
 ```bash
-docker build -t bitcoin-inference:latest .
+docker build -f inference/Dockerfile -t bitcoin-inference:latest .
 ```
 
 The container expects the MLflow tracking server to be available on port 5000.
@@ -580,8 +613,9 @@ workspace/
  │   └── workflows/
  │       ├── bitcoin_pipeline.yml
  │       └── mlops-automation.yml
- ├── Dockerfile               # Docker image for the inference API
+ ├── docker-compose.yaml      # MLflow and inference API services
  ├── inference/
+ │   ├── Dockerfile           # Docker image for the inference API
  │   ├── app.py               # FastAPI application
  │   └── requirements.txt     # Inference dependencies
  ├── mlflow.db                 # local MLflow metadata (not committed)

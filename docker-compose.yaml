@@ -1,6 +1,8 @@
 services:
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v3.1.4
+    image: ghcr.io/mlflow/mlflow:v3.17.0
+    networks:
+      - bitcoin-network
     command:
       - mlflow
       - server
@@ -22,9 +24,15 @@ services:
     build:
       context: .
       dockerfile: inference/Dockerfile
+    networks:
+      - bitcoin-network
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     ports:
       - "8000:8000"
     depends_on:
       - mlflow
+
+networks:
+  bitcoin-network:
+    driver: bridge

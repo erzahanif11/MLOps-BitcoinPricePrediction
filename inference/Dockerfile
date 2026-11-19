@@ -10,7 +10,7 @@ COPY project/metadata ./project/metadata
 COPY project/data/processed/bitcoin_inference.csv ./project/data/processed/bitcoin_inference.csv
 
 ENV PYTHONUNBUFFERED=1
-ENV MLFLOW_TRACKING_URI=http://host.docker.internal:5000
+ENV MLFLOW_TRACKING_URI=http://mlflow:5000
 
 EXPOSE 8000
 

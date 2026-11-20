@@ -14,10 +14,11 @@ CONFIG_PATH = PARENT_DIR / "project" / "metadata" / "production_model.yaml"
 
 model = None
 model_uri = None
+tracking_uri = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, model_uri
+    global model, model_uri, tracking_uri
 
     print("Loading model...")
 
@@ -31,7 +32,11 @@ async def lifespan(app: FastAPI):
     if not model_uri:
         raise ValueError("Model URI not specified in the configuration file.")
 
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    tracking_uri = (
+        os.getenv("MLFLOW_TRACKING_URI")
+        or config.get("tracking", {}).get("tracking_uri")
+        or "http://localhost:5000"
+    )
     mlflow.set_tracking_uri(tracking_uri)
 
     try:
@@ -56,7 +61,8 @@ def health():
     return {
         "status": "healthy",
         "model_loaded": model is not None,
-        "model_uri": model_uri
+        "model_uri": model_uri,
+        "tracking_uri": tracking_uri,
     }
 
 INFERENCE_FILE = PARENT_DIR / "project" / "data" / "processed" / "bitcoin_inference.csv"

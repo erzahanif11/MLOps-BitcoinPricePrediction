@@ -6,7 +6,7 @@ model:
 
 tracking:
   platform: MLflow
-  tracking_uri: "http://localhost:5000"
+  tracking_uri: "http://host.docker.internal:5000"
 
 dataset:
   version_file: "project/data/processed/bitcoin_train_v1.csv.dvc"

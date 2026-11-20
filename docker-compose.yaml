@@ -12,8 +12,11 @@ services:
       - "5000"
       - --backend-store-uri
       - sqlite:////data/mlflow.db
-      - --default-artifact-root
+      - --serve-artifacts
+      - --artifacts-destination
       - /data/mlartifacts
+      - --allowed-hosts
+      - "host.docker.internal:5000,mlflow:5000,localhost:5000,127.0.0.1:5000"
     ports:
       - "5000:5000"
     volumes:
@@ -26,8 +29,10 @@ services:
       dockerfile: inference/Dockerfile
     networks:
       - bitcoin-network
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     environment:
-      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_TRACKING_URI: http://host.docker.internal:5000
     ports:
       - "8000:8000"
     depends_on:
